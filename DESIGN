@@ -1,0 +1,125 @@
+HW3: Locality and the costs of loads and stores
+Bill Yung and Dani Kupfer
+
+Part A: Improving Locality through Blocking
+===========================================
+
+Abstact Thing We Are Trying to Represent: 
+We are trying to represent a blocked, two-dimensional array.  The main idea is 
+to create a matrix in which cells in the same block are located near each other
+within the larger matrix.
+
+
+Functions and Their Contracts:
+   T UArray2b_new(int width, int height, int size, int blocksize)
+        - Creates and returns a malloc'd 2D blocked array with specified
+          dimiensions. The blocksize is the square root of the number of cells
+          in a block.
+
+   T UArray2b_new_64K_block(int width, int height, int size)
+        - Creates and returns a malloc'd 2D blocked array with specified
+          dimensions.
+        - It chooses a default blocksize that is as large as possible while
+          still allowing a block to fit in 64Kb.  If a single cell will not fit
+          in 64KB, the block size is 1.
+
+   void  UArray2b_free  (T *array2b)
+        - deallocates the UArray2b_T and all of its associated data
+
+   int UArray2b_width (T array2b)
+        - returns the width of array
+
+   int UArray2b_height(T array2b)
+        - returns the height of the array
+
+   int UArray2b_size  (T array2b)
+        - returns the width of array
+
+   int UArray2b_blocksize(T array2b)
+        - returns the width of array
+
+   void *UArray2b_at(T array2b, int i, int j)
+        - returns a pointer to the specified location, using the indices i and
+          j for the row and column
+
+   void  UArray2b_map(T array2b,
+                      void apply(int i, int j, T array2b,void *elem, void *cl),
+                      void *cl)
+        - iterates through all elements of the blocked array
+        - visits every cell in one block before moving to another block
+
+
+Representation and Invariants:
+In order to represent this abstract data type, we will use a UArray2_T, each
+element of which contains one block.  Each block is represented as a single
+UArray_T.
+
+Our invariant is that each block is represented with its own UArray_T, which
+will guarantee that cells in the same block are in nearby memory locations.
+
+When the representation satisfies all invariants, it will represent an blocked,
+two-dimensional array in which all elements of the same block are near each
+other and can be easily accessed as such.
+
+
+Programming Idioms:
+The idiom for creating an abstract type using incomplete structures
+The idiom for using an abstraction defined in another interface
+The idiom for allocating memory
+
+
+
+Part C: ppmtrans, a program with straightforward locality property
+==================================================================
+
+Problem: 
+The problem we are trying to solve is how to transform an image using our 
+different mapping functions (row-major, col-major, and block-major).
+
+Inputs: 
+The inputs for this program will be images in PPM format.
+
+Outputs: 
+Depending on which option the user specifies, the output will be a transformed 
+image rotated either 90 or 180 degrees from the original input.
+
+Abstractions: 
+To help solve the problem, we will use A2Methods in order to create, manipulate
+and print the images.  There are several underlying abstract data types that 
+can be used to represent the inputted image (namely a UArray2 or a UArray2b), 
+and A2Methods serves both to hide these implementations and to unify the 
+representations as a means of avoiding duplicate code.  All of the functions 
+used in regards to the representation are called indirectly through the function
+pointers in a methods suite.
+
+Invariant Properties:
+Reading the PPM file is always done in row-major order, which reflects the way
+that pixels are stored in the file and eventually in the array.
+
+Algorithms:
+When calling this program, the client has multiple options in terms of how to
+transform the image and in what order to do so (row major, col major, or block
+major).  Therefore, this program is able to be divided up into smaller
+components based on the client's choices. After reading in the image, we will
+have separate algorithms for rotating the image 90 degrees and rotating the
+image 180 degrees.  These algorithms will then be broken up depending on
+whether the client has specified row major, col major, or block major. In terms
+of rotating the actual image, we will use our mapping functions and specific
+mathematical computations to ensure that each pixel will be placed in the
+corresponding cell of the new transformed image.
+
+Interfaces and Architecture:
+We will use A2Methods as the interface to transform images. This interface
+allows us to create and alter our main abstract data structure (UArray2,
+UArray2b).
+As we mentioned in our algorithm, the program will be divided into specific
+components based on the different options for image transformation. For example,
+one section will be dedicated to mapping the array, while another is responsible
+for transforming the image.
+As the mapping function is iterating through the array, each pixel will be
+transferred and placed correctly in a cell of a different array depending on the
+specified transformation. 
+
+Test Cases:
+  - Test images of multiple sizes (square, rectangular)
+  - Test mapping functions (row major, column major, block major)

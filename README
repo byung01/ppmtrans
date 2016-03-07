@@ -1,0 +1,173 @@
+Comp 40 Homework 3: Locality and the Costs of Loads and Stores
+Name: Dani Kupfer, Bill Yung
+Date: October 8, 2015
+
+Usage
+=====
+./ppmtrans [-rotate <angle>] [-{row-col-block}-major] [filename]
+
+Included Files
+==============
+a2blocked.c
+a2plain.c
+cputiming.h
+ppmtrans.c
+uarray2b.c
+uarray2.c
+compile
+README
+
+
+Architecture
+============
+As mentioned above, all of the different modules are intricately linked.
+ppmtrans ultimately rotates the image, but uses A2Methods, which in turn uses
+a2plain (and a2blocked) in order to access the UArray2 and UArray2b abstract
+data types.  The interfaces for a two-dimensinal unboxed array and a blocked,
+two-dimensional unboxed array are combined under a single interface.  This
+creates an additonal level of abstraction so that the client has the option of
+using either data structure when calling the same functions.
+
+
+                     a2plain  ---  UArray2
+                    / 
+ppmtrans --A2Methods 
+                    \
+                     a2blocked --- UArray2b
+
+
+Interfaces
+==========
+uarray2b.h
+        Description:
+                This interface provides functions that allow the client to
+                manipulate a blocked 2D unboxed array
+        Declared Datatype: UArray2b_T
+                - This is a pointer to a blocked unboxed 2D array. It holds
+                  elements of a specified size. The cells in the same block are
+                  located near each other within the larger grid.
+        Functions:
+                T UArray2b_new
+                        - Malloc's and returns a pointer to a 2D blocked unboxed
+                          array of the given dimensions and size.
+                T UArray2b_new_64K_block
+                        - Creates a new blocked array, each block occupies at
+                          most 64kb. Creates a default blocksize that fits
+                          within the 64kb block.
+                void UArray2b_free
+                int UArray2b_width
+                int UArray2b_height
+                int UArray2b_size
+                int UArray2b_blocksize
+                void *UArray2b_at
+                        - Returns a pointer to the specified coordinates in the
+                          2D blocked array.
+                void UArray2b_map
+                        - Maps through the 2D blocked array. It visits every
+                          cell in one block before moving to another block.
+
+
+uarray2.h is also used in this program and represents an (unblocked) unboxed,
+two-dimensional array.  It also holds elements of a specified size.  While the
+UArray2b includes a mapping function that iterates through its array using
+block major, the UArray2 supplies two mapping functions that can iterate through
+its array using either row or column major.
+
+
+a2methods.h
+        Description:
+                This interface combines the two previous interfaces into one so
+                that both data structures can be used through this interface.
+                A2Methods is able to operate on both arrays (UArray2 and
+                UArray2b) by calling the specified functions through pointers
+                to functions.  a2plain serves as the intermediary step between
+                the client (using A2Methods) and the abstract data type itself
+                (resolving any differences between arguments, etc.).
+
+        Declared Datatype: A2Methods_T
+                - This is a pointer to a struct of functions. The struct allows
+                  the client to call pointers to functions in uarray2.h and
+                  uarray2b.h without call them directly.
+
+        Functions: Each of these functions are pointers to the original
+                     functions in either uarray2.h or uarray2b.h
+                A2(*new)
+                A2(*new_with_blocksize)
+                void (*free)
+
+                int (*width)
+                int (*height)
+                int (*size)
+                int (*blocksize)
+                A2Methods_Object *(*at)
+
+                void (*map_row_major)
+                void (*map_col_major)
+                void (*map_block_major)
+                void (*map_default)
+
+        /*
+         *alternative mapping functions that pass only
+         * cell pointer and closure
+         */
+                void (*small_map_row_major)
+                void (*small_map_col_major)
+                void (*small_map_block_major)
+                void (*small_map_default)
+
+Implementations
+===============
+uarray2b.c
+        Description:
+                uarray2b.c is the implementation for an unboxed, two-dimensional
+                array that organizes its data by blocks.  Elements of any size
+                can be added to the array. Elements in the array are accesed by
+                two indices used to represent column and row, with (0,0) in the
+                top left corner.  UArray2b inclues a mapping function to iterate
+                through the array in block major.
+
+        Private Functions:
+                int find_num_blocks                     
+                - finds the number of blocks needed to store the inputted data
+                  (for one side)
+                void iter_block
+                        - helps with mapping through the array; iterates through
+                          the individual elements in a single block within the
+                          blocked array
+
+a2plain.c
+        This implementation defines a private version of each UArray2 function
+        in A2Methods_T that is implemented by the client.  It serves as the
+        intermediary step between the client (using A2Methods) and the
+        abstract data type itelf (resolving any differences in arguments that
+        might be caused since A2Methods operates on both UArray2s and
+        UArray2bs.
+
+ppmtrans.c
+        Description:
+                ppmtrans is a program that reads in a single ppm image and
+                transforms it based on the user's specification. Users can
+                elect to do a 90 degree rotation, a 180 degree rotation, a 270
+                degree rotation, a 0 degree rotation, a horizontal flip, or a
+                vertical flip using either row major, column major or block 
+                major. The program writes the transformed image to standard 
+                output in the binary ppm format.  It makes use of the 
+                A2Methods abstraction and pnm.h.
+
+        Private Functions:
+                FILE *open_file(int argc, char *argv[], int i);
+                Pnm_ppm transform_image
+                        - Transforms the image based on user's specifications
+                Pnm_ppm transform_diff_dim
+                        - Helper function to transform image
+                Pnm_ppm transform_same_dim
+                        - Helper function to transform image
+                void close_file
+
+         /* These are all separate apply functions
+            that rotate the image in a specific way */
+                void rotation_90
+                void rotation_180
+                void rotation_270
+                void flip_vert
+                void flip_hor
